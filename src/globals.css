@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 4.9% 98%; /* zinc-50 */
+    --foreground: 240 5.9% 10%; /* zinc-900 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 5.9% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 5.9% 10%;
+
+    --primary: 160 84% 39%; /* emerald-600 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 4.8% 95.9%; /* zinc-100 */
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%; /* zinc-500 */
+
+    --accent: 158 64% 52%; /* emerald-500 */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 346.8 77.2% 49.8%; /* rose-500 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5.9% 90%; /* zinc-200 */
+    --input: 240 5.9% 90%;
+    --ring: 160 84% 39%;
+
+    --radius: 1rem; /* rounded-2xl */
+  }
+
+  .dark {
+    --background: 240 10% 3.9%; /* zinc-950 #09090b */
+    --foreground: 0 0% 98%; /* zinc-50 */
+
+    --card: 240 5.9% 7%; /* zinc-900 subtle elevation */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 5.9% 7%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 158 64% 52%; /* emerald-500 */
+    --primary-foreground: 240 10% 3.9%;
+
+    --secondary: 240 3.7% 15.9%; /* zinc-800 */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%; /* zinc-400 */
+
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 346.8 77.2% 49.8%; /* rose-500 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 3.7% 15.9%; /* zinc-800 */
+    --input: 240 3.7% 15.9%;
+    --ring: 158 64% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-zinc-50 dark:bg-zinc-950 text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom subtle scrollbars for mobile web wrapper */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.25);
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.3);
+}
+
+/* Shimmer animation utility */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.8s infinite;
+}
