@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { LogOut, Moon, Shield, Sun } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { LandingPage } from "@/components/LandingPage";
 import { OperatorView } from "@/components/OperatorView";
 import { OwnerAuth } from "@/components/OwnerAuth";
 import { OwnerDashboard } from "@/components/OwnerDashboard";
 
-type View = "operator" | "owner";
+type View = "landing" | "operator" | "owner";
 
 export default function App() {
-  const [view, setView] = useState<View>("operator");
+  const [view, setView] = useState<View>("landing");
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showOwnerAuth, setShowOwnerAuth] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -35,7 +36,24 @@ export default function App() {
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    setView("operator");
+    setView("landing");
+  }
+
+  if (view === "landing") {
+    return (
+      <>
+        <LandingPage
+          onOwnerClick={handleOwnerButtonClick}
+          onOperatorClick={() => setView("operator")}
+        />
+        {showOwnerAuth && (
+          <OwnerAuth
+            isDarkMode={isDarkMode}
+            onClose={() => setShowOwnerAuth(false)}
+          />
+        )}
+      </>
+    );
   }
 
   return (
@@ -47,9 +65,14 @@ export default function App() {
       <div className="mx-auto w-full max-w-3xl pb-10">
         <header className="mb-6 flex items-center justify-between border-b border-zinc-700 py-4">
           <div className="flex items-center gap-2">
-            <span className="rounded-xl bg-emerald-600 p-2 text-white">
+            <button
+              type="button"
+              onClick={() => setView("landing")}
+              className="rounded-xl bg-emerald-600 p-2 text-white"
+              aria-label="Back to homepage"
+            >
               <Shield aria-hidden="true" size={20} />
-            </span>
+            </button>
             <div>
               <h1 className="text-xl font-bold text-emerald-500">POSGuard</h1>
               <p className="text-xs text-zinc-500">
