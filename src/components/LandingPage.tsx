@@ -1,33 +1,37 @@
 import { useEffect, useState } from "react";
-import { Lock, Shield } from "lucide-react";
 
 interface LandingPageProps {
   onOwnerClick: () => void;
   onOperatorClick: () => void;
 }
 
-const LEDGER_ROWS = [
-  { label: "Opening cash", value: 42000 },
-  { label: "Withdrawals", value: 118500 },
-  { label: "Deposits", value: 76000 },
-  { label: "Closing cash", value: 84500 },
-];
+const INK = "#0B0F0D";
+const GOLD = "#E3A93B";
+const PAPER = "#F4EFE2";
+const EMERALD = "#2FAE6B";
+const CLAY = "#C4592E";
 
 const PAIN_POINTS = [
   {
-    n: "1",
+    tint: "rgba(227,169,59,0.08)",
+    accent: GOLD,
     title: "A shortage nobody can explain",
-    body: "₦10,000 in the bag this morning, ₦120,000 moving through the terminal by night. When a customer needs a big withdrawal, cash gets moved around to cover it — and by closing time nobody can say where the numbers actually landed.",
+    body: "₦10,000 in the bag this morning, ₦120,000 moving through the terminal by night. When a customer needs a big withdrawal, cash gets moved around to cover it — by closing time nobody can say where the numbers actually landed.",
+    rotate: "-1.2deg",
   },
   {
-    n: "2",
+    tint: "rgba(47,174,107,0.08)",
+    accent: EMERALD,
     title: "\u201cHe said, she said\u201d at closing time",
     body: "A shortage looks the same whether it's theft or an honest mistake, like giving a customer too much change. Owners end up guessing, and operators end up arguing.",
+    rotate: "0.8deg",
   },
   {
-    n: "3",
-    title: "Charges that don't match what was promised",
+    tint: "rgba(196,89,46,0.1)",
+    accent: CLAY,
+    title: "Charges that don't match the promise",
     body: "You expect Moniepoint to take ₦800 for the day. It takes ₦2,000. Across three or four kiosks, working out real profit by hand every night is slow, and easy to get wrong.",
+    rotate: "-0.6deg",
   },
 ];
 
@@ -35,237 +39,237 @@ export function LandingPage({
   onOwnerClick,
   onOperatorClick,
 }: LandingPageProps) {
-  const [tickIndex, setTickIndex] = useState(-1);
-  const [locked, setLocked] = useState(false);
+  const [stamped, setStamped] = useState(false);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
     if (prefersReducedMotion) {
-      setTickIndex(LEDGER_ROWS.length - 1);
-      setLocked(true);
+      setStamped(true);
       return;
     }
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    LEDGER_ROWS.forEach((_, index) => {
-      timers.push(
-        setTimeout(() => setTickIndex(index), 450 + index * 420),
-      );
-    });
-    timers.push(
-      setTimeout(() => setLocked(true), 450 + LEDGER_ROWS.length * 420 + 300),
-    );
-    return () => timers.forEach(clearTimeout);
+    const timer = setTimeout(() => setStamped(true), 650);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div
-      style={{ background: "#0A120F", color: "#F3EFE4" }}
-      className="min-h-screen"
-    >
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-6">
-        <div className="flex items-center gap-2">
-          <span
-            style={{ background: "#22C55E" }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#0A120F]"
-          >
-            <Shield size={18} aria-hidden="true" />
-          </span>
-          <span
-            style={{ fontFamily: "Fraunces, serif" }}
-            className="text-lg font-medium"
-          >
-            POSGuard
-          </span>
-        </div>
+    <div style={{ background: INK, color: PAPER }} className="min-h-screen overflow-x-hidden">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-7">
+        <span
+          style={{ fontFamily: "Fraunces, serif" }}
+          className="text-xl font-medium tracking-tight"
+        >
+          POSGuard
+        </span>
         <button
           type="button"
           onClick={onOwnerClick}
-          className="rounded-full border px-4 py-2 text-sm"
-          style={{ borderColor: "#3A4A41" }}
+          style={{ color: PAPER }}
+          className="text-sm underline decoration-transparent underline-offset-4 transition hover:decoration-current"
         >
           Owner sign in
         </button>
       </header>
 
-      <main className="mx-auto max-w-5xl px-5">
-        {/* Hero */}
-        <section className="grid gap-10 py-10 md:grid-cols-2 md:gap-16 md:py-20">
+      {/* HERO -- big asymmetric type block + stamp graphic, no dividers */}
+      <section className="relative mx-auto max-w-6xl px-6 pb-24 pt-6 md:pb-36 md:pt-16">
+        <div className="grid items-center gap-12 md:grid-cols-[1.3fr_1fr]">
           <div>
             <h1
-              style={{ fontFamily: "Fraunces, serif", lineHeight: 1.08 }}
-              className="text-4xl font-medium md:text-5xl"
+              style={{ fontFamily: "Fraunces, serif", lineHeight: 0.98 }}
+              className="text-[13vw] font-medium tracking-tight md:text-[5.2vw]"
             >
-              Know exactly what happened at every kiosk, every shift.
+              Nothing leaves
+              <br />
+              the till unseen.
             </h1>
             <p
-              style={{ color: "#B9C4BC" }}
-              className="mt-5 max-w-sm text-base leading-relaxed"
+              style={{ color: "#B9B3A0" }}
+              className="mt-7 max-w-md text-lg leading-relaxed"
             >
-              POSGuard locks in a verified cash count at shift close, across
-              every kiosk you own — so shortages get caught the day they
-              happen, not guessed at weeks later.
+              POSGuard locks in a verified cash count at every kiosk, every
+              shift — so a shortage gets caught the day it happens, and every
+              honest naira gets a paper trail.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap items-center gap-5">
               <button
                 type="button"
                 onClick={onOwnerClick}
-                style={{ background: "#22C55E", color: "#0A120F" }}
-                className="rounded-full px-6 py-3 text-sm font-semibold"
+                style={{ background: GOLD, color: INK }}
+                className="rounded-full px-7 py-3.5 text-sm font-semibold transition hover:brightness-110"
               >
                 I'm a kiosk owner
               </button>
               <button
                 type="button"
                 onClick={onOperatorClick}
-                className="rounded-full border px-6 py-3 text-sm font-semibold"
-                style={{ borderColor: "#3A4A41", color: "#F3EFE4" }}
+                style={{ color: PAPER }}
+                className="text-sm font-medium underline decoration-[#4a463a] underline-offset-4 transition hover:decoration-current"
               >
-                I close a shift here
+                I close a shift here →
               </button>
             </div>
-            <p style={{ color: "#6E7B72" }} className="mt-4 text-xs">
-              ₦1,000/kiosk/month founding rate for your first kiosks.
-            </p>
           </div>
 
-          {/* Animated ledger strip -- the one orchestrated motion moment */}
-          <div
-            style={{ borderColor: "#3A4A41", background: "#0F1C16" }}
-            className="rounded-2xl border p-6"
-          >
-            <p style={{ color: "#6E7B72" }} className="mb-4 text-xs uppercase tracking-wide">
-              Ireakari Street Kiosk · today
-            </p>
-            <div>
-              {LEDGER_ROWS.map((row, index) => (
-                <div
-                  key={row.label}
-                  style={{
-                    borderColor: "#233028",
-                    opacity: tickIndex >= index ? 1 : 0.25,
-                    transition: "opacity 0.4s ease",
-                  }}
-                  className="flex items-center justify-between border-b py-3 text-sm last:border-0"
-                >
-                  <span style={{ color: "#B9C4BC" }}>{row.label}</span>
-                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                    ₦{row.value.toLocaleString("en-NG")}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div
+          {/* Stamp graphic -- the one orchestrated motion moment */}
+          <div className="relative mx-auto flex h-56 w-56 items-center justify-center md:h-72 md:w-72">
+            <svg
+              viewBox="0 0 240 240"
+              className="h-full w-full"
               style={{
-                marginTop: "1rem",
-                borderColor: locked ? "#22C55E" : "#3A4A41",
-                background: locked ? "rgba(34,197,94,0.1)" : "transparent",
-                transition: "all 0.5s ease",
+                transform: stamped
+                  ? "scale(1) rotate(-6deg)"
+                  : "scale(1.6) rotate(8deg)",
+                opacity: stamped ? 1 : 0,
+                transition:
+                  "transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease",
               }}
-              className="flex items-center justify-between rounded-xl border p-3 text-sm"
             >
-              <span style={{ color: locked ? "#22C55E" : "#6E7B72" }}>
-                {locked ? "Balanced & locked" : "Reconciling…"}
-              </span>
-              {locked && <Lock size={16} style={{ color: "#22C55E" }} />}
-            </div>
-          </div>
-        </section>
-
-        {/* Pain points, ledger-row style */}
-        <section className="border-t py-14" style={{ borderColor: "#233028" }}>
-          <h2
-            style={{ fontFamily: "Fraunces, serif" }}
-            className="mb-8 max-w-md text-2xl font-medium"
-          >
-            The three things owners keep telling us
-          </h2>
-          <div>
-            {PAIN_POINTS.map((point) => (
-              <div
-                key={point.n}
-                style={{ borderColor: "#233028" }}
-                className="grid grid-cols-[2rem_1fr] gap-4 border-t py-6 last:border-b md:grid-cols-[3rem_1fr]"
+              <circle
+                cx="120"
+                cy="120"
+                r="108"
+                fill="none"
+                stroke={EMERALD}
+                strokeWidth="3"
+              />
+              <circle
+                cx="120"
+                cy="120"
+                r="94"
+                fill="none"
+                stroke={EMERALD}
+                strokeWidth="1.5"
+                strokeDasharray="2 6"
+              />
+              <path id="stampArcTop" fill="none" d="M 40,120 A 80,80 0 0 1 200,120" />
+              <path id="stampArcBottom" fill="none" d="M 200,128 A 80,80 0 0 1 40,128" />
+              <text
+                fill={EMERALD}
+                fontSize="19"
+                fontWeight={700}
+                letterSpacing="4"
               >
-                <span style={{ color: "#3A4A41", fontFamily: "Fraunces, serif" }} className="text-2xl">
-                  {point.n}
-                </span>
-                <div>
-                  <h3 className="mb-1 font-semibold">{point.title}</h3>
-                  <p style={{ color: "#B9C4BC" }} className="max-w-lg text-sm leading-relaxed">
-                    {point.body}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* What's live vs coming */}
-        <section className="border-t py-14" style={{ borderColor: "#233028" }}>
-          <div className="grid gap-8 md:grid-cols-2">
-            <div>
-              <p style={{ color: "#22C55E" }} className="mb-2 text-xs font-semibold">
-                Working today
-              </p>
-              <h3
-                style={{ fontFamily: "Fraunces, serif" }}
-                className="mb-3 text-xl font-medium"
+                <textPath href="#stampArcTop" startOffset="50%" textAnchor="middle">
+                  VERIFIED
+                </textPath>
+              </text>
+              <text
+                fill={EMERALD}
+                fontSize="13"
+                fontWeight={600}
+                letterSpacing="3"
               >
-                Verified, locked shift reconciliation
-              </h3>
-              <p style={{ color: "#B9C4BC" }} className="text-sm leading-relaxed">
-                Opening cash, top-ups or float rebalancing, withdrawals,
-                deposits, closing cash — the math is checked on the server,
-                not the operator's phone, and once submitted it can't be
-                edited by anyone.
-              </p>
-            </div>
-            <div>
-              <p style={{ color: "#D9A441" }} className="mb-2 text-xs font-semibold">
-                Coming soon
-              </p>
-              <h3
-                style={{ fontFamily: "Fraunces, serif" }}
-                className="mb-3 text-xl font-medium"
-              >
-                Real profit after provider charges
-              </h3>
-              <p style={{ color: "#B9C4BC" }} className="text-sm leading-relaxed">
-                See what Moniepoint or OPay actually deducted against what
-                you expected, per kiosk, per day — so an unusual charge gets
-                caught, not buried in a mental estimate.
-              </p>
-            </div>
+                <textPath href="#stampArcBottom" startOffset="50%" textAnchor="middle">
+                  BALANCED &amp; LOCKED
+                </textPath>
+              </text>
+              <path
+                d="M85 122 L108 145 L158 95"
+                fill="none"
+                stroke={EMERALD}
+                strokeWidth="9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section
-          style={{ borderColor: "#233028" }}
-          className="flex flex-col items-start gap-5 border-t py-14"
+      {/* PAIN POINTS -- offset panels, no hairlines, color as the separator */}
+      <section className="mx-auto max-w-6xl px-6 pb-24">
+        <h2
+          style={{ fontFamily: "Fraunces, serif" }}
+          className="mb-10 max-w-lg text-3xl font-medium leading-tight md:text-4xl"
         >
+          What owners keep telling us
+        </h2>
+        <div className="grid gap-6 md:grid-cols-3">
+          {PAIN_POINTS.map((point) => (
+            <div
+              key={point.title}
+              style={{
+                background: point.tint,
+                transform: `rotate(${point.rotate})`,
+              }}
+              className="rounded-3xl p-7 transition hover:rotate-0"
+            >
+              <span
+                style={{ background: point.accent }}
+                className="mb-5 inline-block h-2.5 w-2.5 rounded-full"
+              />
+              <h3 className="mb-3 text-lg font-semibold">{point.title}</h3>
+              <p style={{ color: "#B9B3A0" }} className="text-sm leading-relaxed">
+                {point.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* LIVE vs COMING -- two big color blocks, no lines */}
+      <section className="grid md:grid-cols-2">
+        <div style={{ background: "#12241C" }} className="px-6 py-16 md:px-14">
+          <p style={{ color: EMERALD }} className="mb-3 text-xs font-bold tracking-wide">
+            WORKING TODAY
+          </p>
+          <h3
+            style={{ fontFamily: "Fraunces, serif" }}
+            className="mb-4 max-w-sm text-2xl font-medium leading-tight"
+          >
+            Verified, locked shift reconciliation
+          </h3>
+          <p style={{ color: "#A9C2B4" }} className="max-w-sm text-sm leading-relaxed">
+            Opening cash, top-ups or float rebalancing, withdrawals,
+            deposits, closing cash — the math is checked on the server, not
+            the operator's phone, and once submitted it can't be edited by
+            anyone.
+          </p>
+        </div>
+        <div style={{ background: "#241C12" }} className="px-6 py-16 md:px-14">
+          <p style={{ color: GOLD }} className="mb-3 text-xs font-bold tracking-wide">
+            COMING SOON
+          </p>
+          <h3
+            style={{ fontFamily: "Fraunces, serif" }}
+            className="mb-4 max-w-sm text-2xl font-medium leading-tight"
+          >
+            Real profit after provider charges
+          </h3>
+          <p style={{ color: "#C2B4A0" }} className="max-w-sm text-sm leading-relaxed">
+            See what Moniepoint or OPay actually deducted against what you
+            expected, per kiosk, per day — so an unusual charge gets caught,
+            not buried in a mental estimate.
+          </p>
+        </div>
+      </section>
+
+      {/* FINAL CTA -- bold solid block */}
+      <section style={{ background: GOLD, color: INK }} className="px-6 py-20">
+        <div className="mx-auto flex max-w-6xl flex-col items-start gap-6">
           <h2
             style={{ fontFamily: "Fraunces, serif" }}
-            className="max-w-md text-2xl font-medium"
+            className="max-w-lg text-3xl font-medium leading-tight md:text-4xl"
           >
             Set up your first kiosk in two minutes.
           </h2>
           <button
             type="button"
             onClick={onOwnerClick}
-            style={{ background: "#22C55E", color: "#0A120F" }}
-            className="rounded-full px-6 py-3 text-sm font-semibold"
+            style={{ background: INK, color: PAPER }}
+            className="rounded-full px-7 py-3.5 text-sm font-semibold transition hover:brightness-125"
           >
             Create your owner account
           </button>
-        </section>
-      </main>
+          <p className="text-sm opacity-70">
+            ₦1,000/kiosk/month founding rate for your first kiosks.
+          </p>
+        </div>
+      </section>
 
-      <footer
-        style={{ borderColor: "#233028", color: "#6E7B72" }}
-        className="mx-auto max-w-5xl border-t px-5 py-8 text-xs"
-      >
+      <footer className="px-6 py-8 text-center text-xs" style={{ color: "#5A564A" }}>
         POSGuard · Built for Nigerian POS kiosk owners
       </footer>
     </div>
