@@ -16,7 +16,7 @@ const PAIN_POINTS = [
     tint: "rgba(227,169,59,0.08)",
     accent: GOLD,
     title: "A shortage nobody can explain",
-    body: "₦10,000 in the bag this morning, ₦120,000 moving through the terminal by night. When a customer needs a big withdrawal, cash gets moved around to cover it — by closing time nobody can say where the numbers actually landed.",
+    body: "₦10,000 in the bag this morning, ₦120,000 moving through the terminal by night. When a customer needs a big withdrawal, cash gets moved around to cover it. By closing time nobody can say where the numbers actually landed.",
     rotate: "-1.2deg",
   },
   {
@@ -89,7 +89,7 @@ export function LandingPage({
               className="mt-7 max-w-md text-lg leading-relaxed"
             >
               POSGuard locks in a verified cash count at every kiosk, every
-              shift — so a shortage gets caught the day it happens, and every
+              shift. A shortage gets caught the day it happens, and every
               honest naira gets a paper trail.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-5">
@@ -223,7 +223,7 @@ export function LandingPage({
           </h3>
           <p style={{ color: "#A9C2B4" }} className="max-w-sm text-sm leading-relaxed">
             Opening cash, top-ups or float rebalancing, withdrawals,
-            deposits, closing cash — the math is checked on the server, not
+            deposits, closing cash. The math is checked on the server, not
             the operator's phone, and once submitted it can't be edited by
             anyone.
           </p>
@@ -240,7 +240,7 @@ export function LandingPage({
           </h3>
           <p style={{ color: "#C2B4A0" }} className="max-w-sm text-sm leading-relaxed">
             See what Moniepoint or OPay actually deducted against what you
-            expected, per kiosk, per day — so an unusual charge gets caught,
+            expected, per kiosk, per day. An unusual charge gets caught,
             not buried in a mental estimate.
           </p>
         </div>
