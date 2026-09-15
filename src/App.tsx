@@ -6,6 +6,7 @@ import { LandingPage } from "@/components/LandingPage";
 import { OperatorView } from "@/components/OperatorView";
 import { OwnerAuth } from "@/components/OwnerAuth";
 import { OwnerDashboard } from "@/components/OwnerDashboard";
+import { ResetPassword } from "@/components/ResetPassword";
 
 type View = "landing" | "operator" | "owner";
 
@@ -14,13 +15,18 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showOwnerAuth, setShowOwnerAuth] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        return;
+      }
       if (newSession) setView("owner");
     });
     return () => subscription.unsubscribe();
@@ -37,6 +43,18 @@ export default function App() {
   async function handleSignOut() {
     await supabase.auth.signOut();
     setView("landing");
+  }
+
+  if (isPasswordRecovery) {
+    return (
+      <ResetPassword
+        isDarkMode={isDarkMode}
+        onDone={() => {
+          setIsPasswordRecovery(false);
+          setView("owner");
+        }}
+      />
+    );
   }
 
   if (view === "landing") {

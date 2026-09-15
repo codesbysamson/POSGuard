@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Copy, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { naira } from "@/lib/format";
-import type { ReconciliationLog, Terminal } from "@/types";
+import type { CommissionLog, ReconciliationLog, Terminal } from "@/types";
 
 interface OwnerDashboardProps {
   isDarkMode: boolean;
@@ -17,8 +17,10 @@ function todayKey() {
 }
 
 export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
+  const [isApproved, setIsApproved] = useState<boolean | null>(null);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [logs, setLogs] = useState<ReconciliationLog[]>([]);
+  const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddKiosk, setShowAddKiosk] = useState(false);
   const [copiedTerminalId, setCopiedTerminalId] = useState<string | null>(null);
@@ -26,6 +28,16 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
   const [operatorName, setOperatorName] = useState("");
   const [addError, setAddError] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+
+  // Commission entry form state, keyed by terminal id being edited.
+  const [commissionFormTerminalId, setCommissionFormTerminalId] = useState<
+    string | null
+  >(null);
+  const [commissionEarned, setCommissionEarned] = useState("");
+  const [chargesActual, setChargesActual] = useState("");
+  const [chargesExpected, setChargesExpected] = useState("");
+  const [commissionError, setCommissionError] = useState("");
+  const [isSavingCommission, setIsSavingCommission] = useState(false);
 
   const inputClass = `w-full rounded-xl border p-3 text-base outline-none focus:border-emerald-500 ${
     isDarkMode
@@ -35,6 +47,20 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
 
   async function loadData() {
     setIsLoading(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: ownerRow } = await supabase
+        .from("kiosk_owners")
+        .select("approved")
+        .eq("id", user.id)
+        .maybeSingle();
+      setIsApproved(Boolean(ownerRow?.approved));
+    }
+
     const { data: terminalRows } = await supabase
       .from("terminals")
       .select("*")
@@ -49,13 +75,45 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
           .order("log_date", { ascending: false })
       : { data: [] as ReconciliationLog[] };
 
+    const { data: commissionRows } = terminalIds.length
+      ? await supabase
+          .from("daily_commission_logs")
+          .select("*")
+          .in("terminal_id", terminalIds)
+          .order("log_date", { ascending: false })
+      : { data: [] as CommissionLog[] };
+
     setTerminals((terminalRows ?? []) as Terminal[]);
     setLogs((logRows ?? []) as ReconciliationLog[]);
+    setCommissionLogs((commissionRows ?? []) as CommissionLog[]);
     setIsLoading(false);
   }
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Realtime: refresh automatically the moment a new log lands, no manual
+  // refresh needed.
+  useEffect(() => {
+    const channel = supabase
+      .channel("owner-dashboard-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_reconciliation_logs" },
+        () => loadData(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_commission_logs" },
+        () => loadData(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleAddKiosk(event: FormEvent<HTMLFormElement>) {
@@ -92,6 +150,55 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
     loadData();
   }
 
+  function openCommissionForm(terminalId: string) {
+    const today = todayKey();
+    const existing = commissionLogs.find(
+      (log) => log.terminal_id === terminalId && log.log_date === today,
+    );
+    const lastForTerminal = commissionLogs.find(
+      (log) => log.terminal_id === terminalId,
+    );
+    setCommissionEarned(existing ? String(existing.commission_earned) : "");
+    setChargesActual(existing ? String(existing.charges_actual) : "");
+    setChargesExpected(
+      existing
+        ? String(existing.charges_expected)
+        : lastForTerminal
+          ? String(lastForTerminal.charges_expected)
+          : "",
+    );
+    setCommissionError("");
+    setCommissionFormTerminalId(terminalId);
+  }
+
+  async function handleSaveCommission(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!commissionFormTerminalId) return;
+    setIsSavingCommission(true);
+    setCommissionError("");
+
+    const { error } = await supabase.from("daily_commission_logs").upsert(
+      {
+        terminal_id: commissionFormTerminalId,
+        log_date: todayKey(),
+        commission_earned: Number(commissionEarned) || 0,
+        charges_actual: Number(chargesActual) || 0,
+        charges_expected: Number(chargesExpected) || 0,
+      },
+      { onConflict: "terminal_id,log_date" },
+    );
+
+    setIsSavingCommission(false);
+
+    if (error) {
+      setCommissionError(error.message);
+      return;
+    }
+
+    setCommissionFormTerminalId(null);
+    loadData();
+  }
+
   const today = todayKey();
 
   const totalShortagesToday = useMemo(
@@ -100,6 +207,17 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
         .filter((log) => log.log_date === today && log.status === "Shortage")
         .reduce((total, log) => total + Math.abs(log.recorded_variance), 0),
     [logs, today],
+  );
+
+  const totalProfitToday = useMemo(
+    () =>
+      commissionLogs
+        .filter((log) => log.log_date === today)
+        .reduce(
+          (total, log) => total + (log.commission_earned - log.charges_actual),
+          0,
+        ),
+    [commissionLogs, today],
   );
 
   // Repeat-offender view: operator name -> shortage count, across all history.
@@ -123,9 +241,23 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
     return <p className="text-center text-zinc-500">Loading your kiosks...</p>;
   }
 
+  if (isApproved === false) {
+    return (
+      <div className="rounded-2xl border border-amber-500 bg-amber-500/10 p-8 text-center">
+        <h2 className="mb-2 text-lg font-bold text-amber-500">
+          Your account is pending approval
+        </h2>
+        <p className="text-sm text-zinc-400">
+          We manually confirm each new owner before giving full access.
+          You'll be able to use the dashboard as soon as it's approved.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <section>
-      <div className="mb-6 grid grid-cols-2 gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
         <div className="rounded-2xl border border-zinc-700 p-4">
           <span className="text-xs text-zinc-500">Registered kiosks</span>
           <strong className="mt-1 block text-2xl">{terminals.length}</strong>
@@ -134,6 +266,12 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
           <span className="text-xs text-zinc-500">Shortages today</span>
           <strong className="mt-1 block text-2xl text-rose-500">
             {naira.format(totalShortagesToday)}
+          </strong>
+        </div>
+        <div className="col-span-2 rounded-2xl border border-zinc-700 p-4 md:col-span-1">
+          <span className="text-xs text-zinc-500">Profit today (after charges)</span>
+          <strong className="mt-1 block text-2xl text-emerald-500">
+            {naira.format(totalProfitToday)}
           </strong>
         </div>
       </div>
@@ -159,7 +297,16 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
             const todayLog = logs.find(
               (log) => log.terminal_id === terminal.id && log.log_date === today,
             );
+            const todayCommission = commissionLogs.find(
+              (log) => log.terminal_id === terminal.id && log.log_date === today,
+            );
             const isShortageToday = todayLog?.status === "Shortage";
+            const chargesOverExpected =
+              todayCommission &&
+              todayCommission.charges_expected > 0 &&
+              todayCommission.charges_actual >
+                todayCommission.charges_expected * 1.2;
+
             return (
               <article
                 key={terminal.id}
@@ -193,25 +340,117 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await navigator.clipboard?.writeText(terminal.access_code);
-                    setCopiedTerminalId(terminal.id);
-                    setTimeout(() => setCopiedTerminalId((current) => (current === terminal.id ? null : current)), 1500);
-                  }}
-                  className="mt-3 flex items-center gap-2 rounded-lg border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-400"
-                >
-                  {copiedTerminalId === terminal.id ? (
-                    <>
-                      <Check size={12} className="text-emerald-500" /> Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={12} /> Operator code: {terminal.access_code}
-                    </>
-                  )}
-                </button>
+
+                {chargesOverExpected && todayCommission && (
+                  <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-amber-500">
+                    <AlertTriangle size={12} /> Charges today (
+                    {naira.format(todayCommission.charges_actual)}) are well
+                    above what you expected (
+                    {naira.format(todayCommission.charges_expected)})
+                  </p>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await navigator.clipboard?.writeText(terminal.access_code);
+                      setCopiedTerminalId(terminal.id);
+                      setTimeout(
+                        () =>
+                          setCopiedTerminalId((current) =>
+                            current === terminal.id ? null : current,
+                          ),
+                        1500,
+                      );
+                    }}
+                    className="flex items-center gap-2 rounded-lg border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-400"
+                  >
+                    {copiedTerminalId === terminal.id ? (
+                      <>
+                        <Check size={12} className="text-emerald-500" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} /> Operator code: {terminal.access_code}
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openCommissionForm(terminal.id)}
+                    className="rounded-lg border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-400"
+                  >
+                    {todayCommission ? "Edit" : "Add"} today's charges
+                  </button>
+                </div>
+
+                {commissionFormTerminalId === terminal.id && (
+                  <form
+                    onSubmit={handleSaveCommission}
+                    className="mt-3 space-y-2 rounded-xl border border-zinc-700 p-3"
+                  >
+                    <label className="block text-xs">
+                      Commission earned today (₦)
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        value={commissionEarned}
+                        onChange={(event) =>
+                          setCommissionEarned(event.target.value)
+                        }
+                        className={`${inputClass} mt-1`}
+                      />
+                    </label>
+                    <label className="block text-xs">
+                      Charges actually deducted today (₦)
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        value={chargesActual}
+                        onChange={(event) => setChargesActual(event.target.value)}
+                        className={`${inputClass} mt-1`}
+                      />
+                    </label>
+                    <label className="block text-xs">
+                      Charges you expected (₦)
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.01"
+                        value={chargesExpected}
+                        onChange={(event) =>
+                          setChargesExpected(event.target.value)
+                        }
+                        className={`${inputClass} mt-1`}
+                      />
+                    </label>
+                    {commissionError && (
+                      <p className="text-xs text-rose-500">{commissionError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCommissionFormTerminalId(null)}
+                        className="flex-1 rounded-lg border border-zinc-700 py-2 text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSavingCommission}
+                        className="flex-1 rounded-lg bg-emerald-600 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {isSavingCommission ? "Saving..." : "Save"}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </article>
             );
           })
@@ -239,7 +478,7 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
       )}
 
       <h2 className="mb-3 font-bold">Reconciliation history</h2>
-      <div className="space-y-3">
+      <div className="mb-8 space-y-3">
         {logs.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-zinc-700 p-8 text-center text-zinc-500">
             No ledger has been submitted.
@@ -278,7 +517,7 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
                     {naira.format(log.recorded_variance)}
                   </strong>
                 </div>
-                                    {(log.movement_reason ||
+                {(log.movement_reason ||
                   log.variance_reason ||
                   log.status !== "Balanced") && (
                   <div className="mt-2 space-y-1 text-xs text-zinc-500">
@@ -298,6 +537,58 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
                         </p>
                       ))}
                   </div>
+                )}
+              </article>
+            );
+          })
+        )}
+      </div>
+
+      <h2 className="mb-3 font-bold">Charges &amp; profit history</h2>
+      <div className="space-y-3">
+        {commissionLogs.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-zinc-700 p-8 text-center text-zinc-500">
+            No charges entered yet. Use "Add today's charges" on a kiosk
+            above.
+          </p>
+        ) : (
+          commissionLogs.map((log) => {
+            const terminal = terminals.find((t) => t.id === log.terminal_id);
+            const netProfit = log.commission_earned - log.charges_actual;
+            const overExpected =
+              log.charges_expected > 0 &&
+              log.charges_actual > log.charges_expected * 1.2;
+            return (
+              <article
+                key={log.id}
+                className={`rounded-2xl border p-4 ${
+                  overExpected ? "border-amber-500 bg-amber-500/10" : "border-zinc-700"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold">
+                      {terminal?.kiosk_location_name ?? "Kiosk"}
+                    </h3>
+                    <p className="text-xs text-zinc-500">{log.log_date}</p>
+                  </div>
+                  <strong
+                    className={netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}
+                  >
+                    {naira.format(netProfit)}
+                  </strong>
+                </div>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Earned {naira.format(log.commission_earned)} · Charged{" "}
+                  {naira.format(log.charges_actual)}
+                  {log.charges_expected > 0 &&
+                    ` (expected ${naira.format(log.charges_expected)})`}
+                </p>
+                {overExpected && (
+                  <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-500">
+                    <AlertTriangle size={12} /> Charges came in well above
+                    expected
+                  </p>
                 )}
               </article>
             );

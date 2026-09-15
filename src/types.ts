@@ -35,3 +35,13 @@ export interface TerminalLookup {
   today_is_locked: boolean;
   today_submission_timestamp: string | null;
 }
+
+export interface CommissionLog {
+  id: string;
+  terminal_id: string;
+  log_date: string;
+  commission_earned: number;
+  charges_actual: number;
+  charges_expected: number;
+  created_at: string;
+}
