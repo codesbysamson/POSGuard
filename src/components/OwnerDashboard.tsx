@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Copy, Plus } from "lucide-react";
+import { AlertTriangle, Check, Copy, MessageCircle, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { naira } from "@/lib/format";
 import type { CommissionLog, ReconciliationLog, Terminal } from "@/types";
@@ -24,6 +24,7 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddKiosk, setShowAddKiosk] = useState(false);
   const [copiedTerminalId, setCopiedTerminalId] = useState<string | null>(null);
+  const [summaryCopied, setSummaryCopied] = useState(false);
   const [kioskName, setKioskName] = useState("");
   const [operatorName, setOperatorName] = useState("");
   const [addError, setAddError] = useState("");
@@ -220,6 +221,71 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
     [commissionLogs, today],
   );
 
+  const todaysSummaryText = useMemo(() => {
+    const dateLabel = new Date(`${today}T00:00:00`).toLocaleDateString(
+      "en-NG",
+      { weekday: "long", day: "numeric", month: "long" },
+    );
+    const lines = [`*POSGuard daily summary — ${dateLabel}*`, ""];
+
+    if (terminals.length === 0) {
+      lines.push("No kiosks registered yet.");
+      return lines.join("\n");
+    }
+
+    for (const terminal of terminals) {
+      const log = logs.find(
+        (l) => l.terminal_id === terminal.id && l.log_date === today,
+      );
+      const commission = commissionLogs.find(
+        (c) => c.terminal_id === terminal.id && c.log_date === today,
+      );
+
+      lines.push(`*${terminal.kiosk_location_name}* (${terminal.assigned_operator_name})`);
+
+      if (!log) {
+        lines.push("  Shift not closed yet");
+      } else if (log.status === "Shortage") {
+        lines.push(
+          `  ⚠️ Shortage: ${naira.format(Math.abs(log.recorded_variance))}${
+            log.variance_reason ? ` (${log.variance_reason})` : " (no reason given)"
+          }`,
+        );
+      } else if (log.status === "Surplus") {
+        lines.push(`  Surplus: ${naira.format(log.recorded_variance)}`);
+      } else {
+        lines.push("  Balanced");
+      }
+
+      if (commission) {
+        const profit = commission.commission_earned - commission.charges_actual;
+        lines.push(`  Profit after charges: ${naira.format(profit)}`);
+        if (
+          commission.charges_expected > 0 &&
+          commission.charges_actual > commission.charges_expected * 1.2
+        ) {
+          lines.push(
+            `  ⚠️ Charges higher than expected: ${naira.format(commission.charges_actual)} vs ${naira.format(commission.charges_expected)} expected`,
+          );
+        }
+      }
+      lines.push("");
+    }
+
+    lines.push(`Total shortages today: ${naira.format(totalShortagesToday)}`);
+    lines.push(`Total profit today: ${naira.format(totalProfitToday)}`);
+    lines.push("");
+    lines.push("Sent from POSGuard");
+
+    return lines.join("\n");
+  }, [terminals, logs, commissionLogs, today, totalShortagesToday, totalProfitToday]);
+
+  async function handleCopySummary() {
+    await navigator.clipboard?.writeText(todaysSummaryText);
+    setSummaryCopied(true);
+    setTimeout(() => setSummaryCopied(false), 1800);
+  }
+
   // Repeat-offender view: operator name -> shortage count, across all history.
   const shortagesByOperator = useMemo(() => {
     const counts = new Map<string, { count: number; total: number }>();
@@ -275,6 +341,22 @@ export function OwnerDashboard({ isDarkMode }: OwnerDashboardProps) {
           </strong>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={handleCopySummary}
+        className="mb-6 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-600 bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-500"
+      >
+        {summaryCopied ? (
+          <>
+            <Check size={16} /> Copied — paste it into WhatsApp
+          </>
+        ) : (
+          <>
+            <MessageCircle size={16} /> Copy today's summary for WhatsApp
+          </>
+        )}
+      </button>
 
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-bold">Your kiosks</h2>
